@@ -215,6 +215,7 @@ namespace PostageStampEffect
                 bottomPoints[i + 1] = new PointF((i + 1) * waveLengthHalf + offsetX + cornerOffset, offsetY + stampHeight - amplitude);
             }
             bottomPoints[horPerforations + 1] = new PointF((horPerforations + 1) * waveLengthHalf + offsetX + cornerOffset, offsetY + stampHeight - cornerOffset);
+            Array.Reverse(bottomPoints);
 
             // Left
             PointF[] leftPoints = new PointF[verPerforations + 2];
@@ -225,6 +226,7 @@ namespace PostageStampEffect
                 leftPoints[i + 1] = new PointF(offsetX + amplitude, (i + 1) * waveLengthHalf + offsetY + cornerOffset);
             }
             leftPoints[verPerforations + 1] = new PointF(offsetX + cornerOffset, (verPerforations + 1) * waveLengthHalf + offsetY + cornerOffset);
+            Array.Reverse(leftPoints);
 
             // Right
             PointF[] rightPoints = new PointF[verPerforations + 2];
@@ -245,34 +247,40 @@ namespace PostageStampEffect
 
             stampSurface.CopySurface(srcArgs.Surface, selection.Location);
 
-            using (RenderArgs ra = new RenderArgs(stampSurface))
+            using (Graphics stamp = new RenderArgs(stampSurface).Graphics)
+            using (GraphicsPath stampOutline = new GraphicsPath())
             {
-                Graphics stamp = ra.Graphics;
+                stampOutline.AddCurve(topPoints, tension);
+                stampOutline.AddCurve(rightPoints, tension);
+                stampOutline.AddCurve(bottomPoints, tension);
+                stampOutline.AddCurve(leftPoints, tension);
 
                 // Draw Mat
                 if (Amount7)
                 {
-                    using (Pen matPen = new Pen(Color.FromArgb(Amount10, Amount9), Amount8 * (float)Amount1))
+                    using (Pen matPen = new Pen(Color.FromArgb(Amount10, Amount9), Amount8 * (float)Amount1 * 2f))
                     {
-                        matPen.Alignment = PenAlignment.Inset;
+                        stamp.SmoothingMode = SmoothingMode.None;
+                        stamp.SetClip(stampOutline);
                         stamp.DrawRectangle(matPen, offsetX, offsetY, stampWidth, stampHeight);
+                        stamp.ResetClip();
+
+                        matPen.Width = 1.6f;
+                        stamp.SmoothingMode = SmoothingMode.AntiAlias;
+                        stamp.DrawPath(matPen, stampOutline);
                     }
                 }
 
                 // Draw Outline
                 if (Amount6)
                 {
-                    stamp.SmoothingMode = SmoothingMode.AntiAlias;
-
-                    using (Pen stampPen = new Pen(Color.FromArgb(255, Color.LightGray), 2f))
+                    using (Pen stampPen = new Pen(Color.FromArgb(255, Color.LightGray), 3f))
                     {
                         stampPen.StartCap = LineCap.Round;
                         stampPen.EndCap = LineCap.Round;
 
-                        stamp.DrawCurve(stampPen, topPoints, tension);
-                        stamp.DrawCurve(stampPen, bottomPoints, tension);
-                        stamp.DrawCurve(stampPen, leftPoints, tension);
-                        stamp.DrawCurve(stampPen, rightPoints, tension);
+                        stamp.SmoothingMode = SmoothingMode.AntiAlias;
+                        stamp.DrawPath(stampPen, stampOutline);
                     }
                 }
             }
@@ -284,85 +292,19 @@ namespace PostageStampEffect
             else
                 eraserSurface.Clear(Color.Transparent);
 
-            PointF[] edgeTopPoints = new PointF[4];
-            edgeTopPoints[0] = new PointF(offsetX + stampWidth, offsetY + cornerOffset);
-            edgeTopPoints[1] = new PointF(offsetX, offsetY - stampWidth);
-            edgeTopPoints[2] = new PointF(offsetX + stampWidth, offsetY - stampWidth);
-            edgeTopPoints[3] = new PointF(offsetX, offsetY);
-            PointF[] eraserTopPoints = new PointF[topPoints.Length + edgeTopPoints.Length];
-            topPoints.CopyTo(eraserTopPoints, 0);
-            edgeTopPoints.CopyTo(eraserTopPoints, topPoints.Length);
-
-            PointF[] edgeRightPoints = new PointF[4];
-            edgeRightPoints[0] = new PointF(offsetX + stampWidth - cornerOffset, offsetY + stampHeight);
-            edgeRightPoints[1] = new PointF(offsetX + stampWidth + stampHeight, offsetY);
-            edgeRightPoints[2] = new PointF(offsetX + stampWidth + stampHeight, offsetY + stampHeight);
-            edgeRightPoints[3] = new PointF(offsetX + stampWidth, offsetY);
-            PointF[] eraserRightPoints = new PointF[rightPoints.Length + edgeRightPoints.Length];
-            rightPoints.CopyTo(eraserRightPoints, 0);
-            edgeRightPoints.CopyTo(eraserRightPoints, rightPoints.Length);
-
-            PointF[] edgeBottomPoints = new PointF[4];
-            edgeBottomPoints[0] = new PointF(offsetX + stampWidth, offsetY + stampHeight);
-            edgeBottomPoints[1] = new PointF(offsetX, offsetY + stampHeight + stampWidth);
-            edgeBottomPoints[2] = new PointF(offsetX + stampWidth, offsetY + stampHeight + stampWidth);
-            edgeBottomPoints[3] = new PointF(offsetX + cornerOffset, offsetY + stampHeight);
-            PointF[] eraserBottomPoints = new PointF[bottomPoints.Length + edgeBottomPoints.Length];
-            bottomPoints.CopyTo(eraserBottomPoints, 0);
-            edgeBottomPoints.CopyTo(eraserBottomPoints, bottomPoints.Length);
-
-            PointF[] edgeLeftPoints = new PointF[4];
-            edgeLeftPoints[0] = new PointF(offsetX, offsetY + stampHeight);
-            edgeLeftPoints[1] = new PointF(offsetX - stampHeight, offsetY);
-            edgeLeftPoints[2] = new PointF(offsetX - stampHeight, offsetY + stampHeight);
-            edgeLeftPoints[3] = new PointF(offsetX + cornerOffset, offsetY);
-            PointF[] eraserLeftPoints = new PointF[leftPoints.Length + edgeLeftPoints.Length];
-            leftPoints.CopyTo(eraserLeftPoints, 0);
-            edgeLeftPoints.CopyTo(eraserLeftPoints, leftPoints.Length);
-
-            using (RenderArgs ra = new RenderArgs(eraserSurface))
+            using (Graphics eraser = new RenderArgs(eraserSurface).Graphics)
             {
-                Graphics eraser = ra.Graphics;
+                eraser.SmoothingMode = SmoothingMode.AntiAlias;
 
-                using (Pen eraserPen = new Pen(Color.Black))
+                // Clear Pixels outside of Stamp
+                using (GraphicsPath clearPath = new GraphicsPath())
                 {
-                    eraserPen.Width = offsetY - selection.Top;
-                    eraser.DrawLine(eraserPen, selection.Left, selection.Top + eraserPen.Width / 2f, selection.Right, selection.Top + eraserPen.Width / 2f);
-
-                    eraserPen.Width = selection.Right - offsetX - stampWidth;
-                    eraser.DrawLine(eraserPen, selection.Right - eraserPen.Width / 2f, selection.Top, selection.Right - eraserPen.Width / 2f, selection.Bottom);
-
-                    eraserPen.Width = selection.Bottom - offsetY - stampHeight;
-                    eraser.DrawLine(eraserPen, selection.Left, selection.Bottom - eraserPen.Width / 2f, selection.Right, selection.Bottom - eraserPen.Width / 2f);
-
-                    eraserPen.Width = offsetX - selection.Left;
-                    eraser.DrawLine(eraserPen, selection.Left + eraserPen.Width / 2f, selection.Top, selection.Left + eraserPen.Width / 2f, selection.Bottom);
-
-                    eraser.SmoothingMode = SmoothingMode.AntiAlias;
-
-                    eraserPen.Width = 2.5f * (float)Amount1;
-                    eraser.DrawLine(eraserPen, offsetX - cornerOffset, offsetY + amplitude, offsetX + amplitude, offsetY - cornerOffset);
-                    eraser.DrawLine(eraserPen, offsetX + stampWidth + cornerOffset, offsetY + amplitude, offsetX + stampWidth - amplitude, offsetY - cornerOffset);
-                    eraser.DrawLine(eraserPen, offsetX - cornerOffset, offsetY + stampHeight - amplitude, offsetX + amplitude, offsetY + stampHeight + cornerOffset);
-                    eraser.DrawLine(eraserPen, offsetX + stampWidth + cornerOffset, offsetY + stampHeight - amplitude, offsetX + stampWidth - amplitude, offsetY + stampHeight + cornerOffset);
-                }
-
-                using (Brush eraserBrush = new SolidBrush(Color.Black))
-                {
-                    eraser.SmoothingMode = SmoothingMode.None;
-
-                    float block = 2f * (float)Amount1;
-                    eraser.FillRectangle(eraserBrush, offsetX, offsetY, block, block);
-                    eraser.FillRectangle(eraserBrush, offsetX + stampWidth - block, offsetY, block, block);
-                    eraser.FillRectangle(eraserBrush, offsetX + stampWidth - block, offsetY + stampHeight - block, block, block);
-                    eraser.FillRectangle(eraserBrush, offsetX, offsetY + stampHeight - block, block, block);
-
-                    eraser.SmoothingMode = SmoothingMode.AntiAlias;
-
-                    eraser.FillClosedCurve(eraserBrush, eraserTopPoints, FillMode.Alternate, tension);
-                    eraser.FillClosedCurve(eraserBrush, eraserRightPoints, FillMode.Alternate, tension);
-                    eraser.FillClosedCurve(eraserBrush, eraserBottomPoints, FillMode.Alternate, tension);
-                    eraser.FillClosedCurve(eraserBrush, eraserLeftPoints, FillMode.Alternate, tension);
+                    clearPath.AddRectangle(eraser.ClipBounds);
+                    clearPath.AddCurve(topPoints, tension);
+                    clearPath.AddCurve(rightPoints, tension);
+                    clearPath.AddCurve(bottomPoints, tension);
+                    clearPath.AddCurve(leftPoints, tension);
+                    eraser.FillPath(Brushes.Black, clearPath);
                 }
             }
             #endregion
