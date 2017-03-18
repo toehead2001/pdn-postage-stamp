@@ -12,79 +12,25 @@ namespace PostageStampEffect
 {
     public class PluginSupportInfo : IPluginSupportInfo
     {
-        public string Author
-        {
-            get
-            {
-                return ((AssemblyCopyrightAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyCopyrightAttribute), false)[0]).Copyright;
-            }
-        }
-        public string Copyright
-        {
-            get
-            {
-                return ((AssemblyDescriptionAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyDescriptionAttribute), false)[0]).Description;
-            }
-        }
-
-        public string DisplayName
-        {
-            get
-            {
-                return ((AssemblyProductAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyProductAttribute), false)[0]).Product;
-            }
-        }
-
-        public Version Version
-        {
-            get
-            {
-                return base.GetType().Assembly.GetName().Version;
-            }
-        }
-
-        public Uri WebsiteUri
-        {
-            get
-            {
-                return new Uri("http://www.getpaint.net/redirect/plugins.html");
-            }
-        }
+        public string Author => ((AssemblyCopyrightAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyCopyrightAttribute), false)[0]).Copyright;
+        public string Copyright => ((AssemblyDescriptionAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyDescriptionAttribute), false)[0]).Description;
+        public string DisplayName => ((AssemblyProductAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyProductAttribute), false)[0]).Product;
+        public Version Version => base.GetType().Assembly.GetName().Version;
+        public Uri WebsiteUri => new Uri("http://www.getpaint.net/redirect/plugins.html");
     }
 
     [PluginSupportInfo(typeof(PluginSupportInfo), DisplayName = "Postage Stamp")]
     public class PostageStampEffectPlugin : PropertyBasedEffect
     {
-        public static string StaticName
-        {
-            get
-            {
-                return "Postage Stamp";
-            }
-        }
-
-        public static Image StaticIcon
-        {
-            get
-            {
-                return new Bitmap(typeof(PostageStampEffectPlugin), "PostageStamp.png");
-            }
-        }
-
-        public static string SubmenuName
-        {
-            get
-            {
-                return SubmenuNames.Render;
-            }
-        }
+        private const string StaticName = "Postage Stamp";
+        private static readonly Image StaticIcon = new Bitmap(typeof(PostageStampEffectPlugin), "PostageStamp.png");
 
         public PostageStampEffectPlugin()
-            : base(StaticName, StaticIcon, SubmenuName, EffectFlags.Configurable)
+            : base(StaticName, StaticIcon, SubmenuNames.Render, EffectFlags.Configurable)
         {
         }
 
-        public enum PropertyNames
+        private enum PropertyNames
         {
             Amount1,
             Amount2,
@@ -98,7 +44,7 @@ namespace PostageStampEffect
             Amount10
         }
 
-        public enum Amount4Options
+        private enum Amount4Options
         {
             Amount4Option1,
             Amount4Option2
@@ -274,7 +220,7 @@ namespace PostageStampEffect
                 // Draw Outline
                 if (Amount6)
                 {
-                    using (Pen stampPen = new Pen(Color.FromArgb(255, Color.LightGray), 2f))
+                    using (Pen stampPen = new Pen(Color.LightGray, 2f))
                     {
                         stampPen.StartCap = LineCap.Round;
                         stampPen.EndCap = LineCap.Round;
@@ -337,18 +283,17 @@ namespace PostageStampEffect
 
         Surface eraserSurface, stampSurface;
 
-        void Render(Surface dst, Surface src, Rectangle rect)
+        private void Render(Surface dst, Surface src, Rectangle rect)
         {
-            ColorBgra stampPixel, eraserPixel;
+            ColorBgra stampPixel;
 
             for (int y = rect.Top; y < rect.Bottom; y++)
             {
                 if (IsCancelRequested) return;
                 for (int x = rect.Left; x < rect.Right; x++)
                 {
-                    eraserPixel = eraserSurface[x, y];
                     stampPixel = stampSurface[x, y];
-                    stampPixel.A = Int32Util.ClampToByte(255 - eraserPixel.A);
+                    stampPixel.A = Int32Util.ClampToByte(byte.MaxValue - eraserSurface[x, y].A);
 
                     dst[x, y] = stampPixel;
                 }
