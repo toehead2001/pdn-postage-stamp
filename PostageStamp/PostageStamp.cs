@@ -265,7 +265,7 @@ namespace PostageStampEffect
                         stamp.DrawRectangle(matPen, offsetX, offsetY, stampWidth, stampHeight);
                         stamp.ResetClip();
 
-                        matPen.Width = 1.6f;
+                        matPen.Width = 1.0f;
                         stamp.SmoothingMode = SmoothingMode.AntiAlias;
                         stamp.DrawPath(matPen, stampOutline);
                     }
@@ -274,7 +274,7 @@ namespace PostageStampEffect
                 // Draw Outline
                 if (Amount6)
                 {
-                    using (Pen stampPen = new Pen(Color.FromArgb(255, Color.LightGray), 3f))
+                    using (Pen stampPen = new Pen(Color.FromArgb(255, Color.LightGray), 2f))
                     {
                         stampPen.StartCap = LineCap.Round;
                         stampPen.EndCap = LineCap.Round;
