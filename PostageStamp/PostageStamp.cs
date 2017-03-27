@@ -188,8 +188,6 @@ namespace PostageStampEffect
             #region Stamp Surface
             if (stampSurface == null)
                 stampSurface = new Surface(srcArgs.Surface.Size);
-            else
-                stampSurface.Clear(Color.Transparent);
 
             stampSurface.CopySurface(srcArgs.Surface, selection.Location);
 
