@@ -12,11 +12,11 @@ namespace PostageStampEffect
 {
     public class PluginSupportInfo : IPluginSupportInfo
     {
-        public string Author => ((AssemblyCopyrightAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyCopyrightAttribute), false)[0]).Copyright;
-        public string Copyright => ((AssemblyDescriptionAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyDescriptionAttribute), false)[0]).Description;
-        public string DisplayName => ((AssemblyProductAttribute)base.GetType().Assembly.GetCustomAttributes(typeof(AssemblyProductAttribute), false)[0]).Product;
+        public string Author => base.GetType().Assembly.GetCustomAttribute<AssemblyCopyrightAttribute>().Copyright;
+        public string Copyright => base.GetType().Assembly.GetCustomAttribute<AssemblyDescriptionAttribute>().Description;
+        public string DisplayName => base.GetType().Assembly.GetCustomAttribute<AssemblyProductAttribute>().Product;
         public Version Version => base.GetType().Assembly.GetName().Version;
-        public Uri WebsiteUri => new Uri("http://forums.getpaint.net/index.php?showtopic=108935");
+        public Uri WebsiteUri => new Uri("https://forums.getpaint.net/index.php?showtopic=108935");
     }
 
     [PluginSupportInfo(typeof(PluginSupportInfo), DisplayName = "Postage Stamp")]
@@ -32,44 +32,43 @@ namespace PostageStampEffect
 
         private enum PropertyNames
         {
-            Amount1,
-            Amount2,
-            Amount3,
-            Amount4,
-            Amount5,
-            Amount6,
-            Amount7,
-            Amount8,
-            Amount9,
-            Amount10
+            Scale,
+            HorPerfs,
+            VerPerfs,
+            PerfType,
+            Position,
+            Outline,
+            Mat,
+            MatSize,
+            MatColor
         }
 
-        private enum Amount4Options
+        private enum PerfType
         {
-            Amount4Option1,
-            Amount4Option2
+            Curved,
+            Straight
         }
-
 
         protected override PropertyCollection OnCreatePropertyCollection()
         {
-            List<Property> props = new List<Property>();
+            List<Property> props = new List<Property>
+            {
+                new DoubleProperty(PropertyNames.Scale, 1, 0.5, 10),
+                new Int32Property(PropertyNames.HorPerfs, 13, 2, 200),
+                new Int32Property(PropertyNames.VerPerfs, 13, 2, 200),
+                StaticListChoiceProperty.CreateForEnum<PerfType>(PropertyNames.PerfType, 0, false),
+                new DoubleVectorProperty(PropertyNames.Position, Pair.Create(0.0, 0.0), Pair.Create(-1.0, -1.0), Pair.Create(+1.0, +1.0)),
+                new BooleanProperty(PropertyNames.Outline, false),
+                new BooleanProperty(PropertyNames.Mat, false),
+                new Int32Property(PropertyNames.MatSize, 12, 5, 20),
+                new Int32Property(PropertyNames.MatColor, ColorBgra.ToOpaqueInt32(Color.White), int.MinValue, int.MaxValue)
+            };
 
-            props.Add(new DoubleProperty(PropertyNames.Amount1, 1, 0.5, 10));
-            props.Add(new Int32Property(PropertyNames.Amount2, 13, 2, 200));
-            props.Add(new Int32Property(PropertyNames.Amount3, 13, 2, 200));
-            props.Add(StaticListChoiceProperty.CreateForEnum<Amount4Options>(PropertyNames.Amount4, 0, false));
-            props.Add(new DoubleVectorProperty(PropertyNames.Amount5, Pair.Create(0.000, 0.000), Pair.Create(-1.0, -1.0), Pair.Create(+1.0, +1.0)));
-            props.Add(new BooleanProperty(PropertyNames.Amount6, false));
-            props.Add(new BooleanProperty(PropertyNames.Amount7, false));
-            props.Add(new Int32Property(PropertyNames.Amount8, 12, 5, 20));
-            props.Add(new Int32Property(PropertyNames.Amount9, ColorBgra.ToOpaqueInt32(Color.White), 0, 0xffffff));
-            props.Add(new Int32Property(PropertyNames.Amount10, 255, 0, 255));
-
-            List<PropertyCollectionRule> propRules = new List<PropertyCollectionRule>();
-            propRules.Add(new ReadOnlyBoundToBooleanRule(PropertyNames.Amount8, PropertyNames.Amount7, true));
-            propRules.Add(new ReadOnlyBoundToBooleanRule(PropertyNames.Amount9, PropertyNames.Amount7, true));
-            propRules.Add(new ReadOnlyBoundToBooleanRule(PropertyNames.Amount10, PropertyNames.Amount7, true));
+            List<PropertyCollectionRule> propRules = new List<PropertyCollectionRule>
+            {
+                new ReadOnlyBoundToBooleanRule(PropertyNames.MatSize, PropertyNames.Mat, true),
+                new ReadOnlyBoundToBooleanRule(PropertyNames.MatColor, PropertyNames.Mat, true)
+            };
 
             return new PropertyCollection(props, propRules);
         }
@@ -78,69 +77,64 @@ namespace PostageStampEffect
         {
             ControlInfo configUI = CreateDefaultConfigUI(props);
 
-            configUI.SetPropertyControlValue(PropertyNames.Amount1, ControlInfoPropertyNames.DisplayName, "Scale");
-            configUI.SetPropertyControlValue(PropertyNames.Amount1, ControlInfoPropertyNames.SliderLargeChange, 0.25);
-            configUI.SetPropertyControlValue(PropertyNames.Amount1, ControlInfoPropertyNames.SliderSmallChange, 0.05);
-            configUI.SetPropertyControlValue(PropertyNames.Amount1, ControlInfoPropertyNames.UpDownIncrement, 0.01);
-            configUI.SetPropertyControlValue(PropertyNames.Amount1, ControlInfoPropertyNames.DecimalPlaces, 3);
-            configUI.SetPropertyControlValue(PropertyNames.Amount2, ControlInfoPropertyNames.DisplayName, "Horizontal Perforations");
-            configUI.SetPropertyControlValue(PropertyNames.Amount3, ControlInfoPropertyNames.DisplayName, "Vertical Perforations");
-            configUI.SetPropertyControlValue(PropertyNames.Amount4, ControlInfoPropertyNames.DisplayName, "Perforation Type");
-            PropertyControlInfo Amount4Control = configUI.FindControlForPropertyName(PropertyNames.Amount4);
-            Amount4Control.SetValueDisplayName(Amount4Options.Amount4Option1, "Curved");
-            Amount4Control.SetValueDisplayName(Amount4Options.Amount4Option2, "Straight");
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.DisplayName, "Position");
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.SliderSmallChangeX, 0.05);
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.SliderLargeChangeX, 0.25);
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.UpDownIncrementX, 0.01);
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.SliderSmallChangeY, 0.05);
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.SliderLargeChangeY, 0.25);
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.UpDownIncrementY, 0.01);
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.DecimalPlaces, 3);
-            Rectangle selection5 = EnvironmentParameters.GetSelection(EnvironmentParameters.SourceSurface.Bounds).GetBoundsInt();
-            ImageResource imageResource5 = ImageResource.FromImage(EnvironmentParameters.SourceSurface.CreateAliasedBitmap(selection5));
-            configUI.SetPropertyControlValue(PropertyNames.Amount5, ControlInfoPropertyNames.StaticImageUnderlay, imageResource5);
-            configUI.SetPropertyControlValue(PropertyNames.Amount6, ControlInfoPropertyNames.DisplayName, string.Empty);
-            configUI.SetPropertyControlValue(PropertyNames.Amount6, ControlInfoPropertyNames.Description, "Use Outline");
-            configUI.SetPropertyControlValue(PropertyNames.Amount7, ControlInfoPropertyNames.DisplayName, string.Empty);
-            configUI.SetPropertyControlValue(PropertyNames.Amount7, ControlInfoPropertyNames.Description, "Use Mat");
-            configUI.SetPropertyControlValue(PropertyNames.Amount8, ControlInfoPropertyNames.DisplayName, "Mat Size");
-            configUI.SetPropertyControlValue(PropertyNames.Amount9, ControlInfoPropertyNames.DisplayName, "Mat Color");
-            configUI.SetPropertyControlType(PropertyNames.Amount9, PropertyControlType.ColorWheel);
-            configUI.SetPropertyControlValue(PropertyNames.Amount10, ControlInfoPropertyNames.DisplayName, "");
-            configUI.SetPropertyControlValue(PropertyNames.Amount10, ControlInfoPropertyNames.ControlColors, new ColorBgra[] { ColorBgra.White, ColorBgra.Black });
+            configUI.SetPropertyControlValue(PropertyNames.Scale, ControlInfoPropertyNames.DisplayName, "Scale");
+            configUI.SetPropertyControlValue(PropertyNames.Scale, ControlInfoPropertyNames.SliderLargeChange, 0.25);
+            configUI.SetPropertyControlValue(PropertyNames.Scale, ControlInfoPropertyNames.SliderSmallChange, 0.05);
+            configUI.SetPropertyControlValue(PropertyNames.Scale, ControlInfoPropertyNames.UpDownIncrement, 0.01);
+            configUI.SetPropertyControlValue(PropertyNames.Scale, ControlInfoPropertyNames.DecimalPlaces, 3);
+            configUI.SetPropertyControlValue(PropertyNames.HorPerfs, ControlInfoPropertyNames.DisplayName, "Horizontal Perforations");
+            configUI.SetPropertyControlValue(PropertyNames.VerPerfs, ControlInfoPropertyNames.DisplayName, "Vertical Perforations");
+            configUI.SetPropertyControlValue(PropertyNames.PerfType, ControlInfoPropertyNames.DisplayName, "Perforation Type");
+            PropertyControlInfo perfTypeControl = configUI.FindControlForPropertyName(PropertyNames.PerfType);
+            perfTypeControl.SetValueDisplayName(PerfType.Curved, "Curved");
+            perfTypeControl.SetValueDisplayName(PerfType.Straight, "Straight");
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.DisplayName, "Position");
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.SliderSmallChangeX, 0.05);
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.SliderLargeChangeX, 0.25);
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.UpDownIncrementX, 0.01);
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.SliderSmallChangeY, 0.05);
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.SliderLargeChangeY, 0.25);
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.UpDownIncrementY, 0.01);
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.DecimalPlaces, 3);
+            Rectangle selBounds = EnvironmentParameters.GetSelection(EnvironmentParameters.SourceSurface.Bounds).GetBoundsInt();
+            ImageResource selImage = ImageResource.FromImage(EnvironmentParameters.SourceSurface.CreateAliasedBitmap(selBounds));
+            configUI.SetPropertyControlValue(PropertyNames.Position, ControlInfoPropertyNames.StaticImageUnderlay, selImage);
+            configUI.SetPropertyControlValue(PropertyNames.Outline, ControlInfoPropertyNames.DisplayName, string.Empty);
+            configUI.SetPropertyControlValue(PropertyNames.Outline, ControlInfoPropertyNames.Description, "Use Outline");
+            configUI.SetPropertyControlValue(PropertyNames.Mat, ControlInfoPropertyNames.DisplayName, string.Empty);
+            configUI.SetPropertyControlValue(PropertyNames.Mat, ControlInfoPropertyNames.Description, "Use Mat");
+            configUI.SetPropertyControlValue(PropertyNames.MatSize, ControlInfoPropertyNames.DisplayName, "Mat Size");
+            configUI.SetPropertyControlValue(PropertyNames.MatColor, ControlInfoPropertyNames.DisplayName, "Mat Color");
+            configUI.SetPropertyControlType(PropertyNames.MatColor, PropertyControlType.ColorWheel);
 
             return configUI;
         }
 
         protected override void OnSetRenderInfo(PropertyBasedEffectConfigToken newToken, RenderArgs dstArgs, RenderArgs srcArgs)
         {
-            Amount1 = newToken.GetProperty<DoubleProperty>(PropertyNames.Amount1).Value;
-            Amount2 = newToken.GetProperty<Int32Property>(PropertyNames.Amount2).Value;
-            Amount3 = newToken.GetProperty<Int32Property>(PropertyNames.Amount3).Value;
-            Amount4 = (byte)((int)newToken.GetProperty<StaticListChoiceProperty>(PropertyNames.Amount4).Value);
-            Amount5 = newToken.GetProperty<DoubleVectorProperty>(PropertyNames.Amount5).Value;
-            Amount7 = newToken.GetProperty<BooleanProperty>(PropertyNames.Amount7).Value;
-            Amount8 = newToken.GetProperty<Int32Property>(PropertyNames.Amount8).Value;
-            Amount9 = ColorBgra.FromOpaqueInt32(newToken.GetProperty<Int32Property>(PropertyNames.Amount9).Value);
-            Amount10 = newToken.GetProperty<Int32Property>(PropertyNames.Amount10).Value;
-            Amount6 = newToken.GetProperty<BooleanProperty>(PropertyNames.Amount6).Value;
-
+            double scale = newToken.GetProperty<DoubleProperty>(PropertyNames.Scale).Value;
+            int horPerfs = newToken.GetProperty<Int32Property>(PropertyNames.HorPerfs).Value;
+            int verPerfs = newToken.GetProperty<Int32Property>(PropertyNames.VerPerfs).Value;
+            int perfType = (int)newToken.GetProperty<StaticListChoiceProperty>(PropertyNames.PerfType).Value;
+            Pair<double, double> position = newToken.GetProperty<DoubleVectorProperty>(PropertyNames.Position).Value;
+            bool mat = newToken.GetProperty<BooleanProperty>(PropertyNames.Mat).Value;
+            int matSize = newToken.GetProperty<Int32Property>(PropertyNames.MatSize).Value;
+            ColorBgra matColor = ColorBgra.FromOpaqueInt32(newToken.GetProperty<Int32Property>(PropertyNames.MatColor).Value);
+            bool outline = newToken.GetProperty<BooleanProperty>(PropertyNames.Outline).Value;
 
             Rectangle selection = EnvironmentParameters.GetSelection(srcArgs.Surface.Bounds).GetBoundsInt();
             float centerX = ((selection.Right - selection.Left) / 2f) + selection.Left;
             float centerY = ((selection.Bottom - selection.Top) / 2f) + selection.Top;
-            float amplitude = 4f * (float)Amount1;
-            float waveLengthHalf = 5.4f * (float)Amount1;
+            float amplitude = 4f * (float)scale;
+            float waveLengthHalf = 5.4f * (float)scale;
             float cornerOffset = amplitude / 2f;
-            int horPerforations = Amount2 * 2;
-            int verPerforations = Amount3 * 2;
+            int horPerforations = horPerfs * 2;
+            int verPerforations = verPerfs * 2;
             float stampWidth = waveLengthHalf * horPerforations + amplitude + waveLengthHalf;
             float stampHeight = waveLengthHalf * verPerforations + amplitude + waveLengthHalf;
-            float offsetX = centerX - stampWidth / 2f + (float)Amount5.First * (selection.Width / 2f - stampWidth / 2f - 1f);
-            float offsetY = centerY - stampHeight / 2f + (float)Amount5.Second * (selection.Height / 2f - stampHeight / 2f - 1f);
-            float tension = (Amount4 == 0) ? 0.75f : 0f;
-
+            float offsetX = centerX - stampWidth / 2f + (float)position.First * (selection.Width / 2f - stampWidth / 2f - 1f);
+            float offsetY = centerY - stampHeight / 2f + (float)position.Second * (selection.Height / 2f - stampHeight / 2f - 1f);
+            float tension = (perfType == 0) ? 0.75f : 0f;
 
             // Top
             PointF[] topPoints = new PointF[horPerforations + 2];
@@ -184,10 +178,11 @@ namespace PostageStampEffect
             }
             rightPoints[verPerforations + 1] = new PointF(offsetX + stampWidth - cornerOffset, (verPerforations + 1) * waveLengthHalf + offsetY + cornerOffset);
 
-
             #region Stamp Surface
             if (stampSurface == null)
+            {
                 stampSurface = new Surface(srcArgs.Surface.Size);
+            }
 
             stampSurface.CopySurface(srcArgs.Surface, selection.Location);
 
@@ -200,9 +195,9 @@ namespace PostageStampEffect
                 stampOutline.AddCurve(leftPoints, tension);
 
                 // Draw Mat
-                if (Amount7)
+                if (mat)
                 {
-                    using (Pen matPen = new Pen(Color.FromArgb(Amount10, Amount9), Amount8 * (float)Amount1 * 2f))
+                    using (Pen matPen = new Pen(matColor, matSize * (float)scale * 2f))
                     {
                         stamp.SmoothingMode = SmoothingMode.None;
                         stamp.SetClip(stampOutline);
@@ -216,7 +211,7 @@ namespace PostageStampEffect
                 }
 
                 // Draw Outline
-                if (Amount6)
+                if (outline)
                 {
                     using (Pen stampPen = new Pen(Color.LightGray, 2f))
                     {
@@ -253,7 +248,6 @@ namespace PostageStampEffect
             }
             #endregion
 
-
             base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
         }
 
@@ -266,20 +260,7 @@ namespace PostageStampEffect
             }
         }
 
-        #region UICode
-        double Amount1 = 1; // [0.5,10] Scale
-        int Amount2 = 13; // [2,50] Horizontal Perforations
-        int Amount3 = 13; // [2,50] Vertical Perforations
-        byte Amount4 = 0; // Perforation Type|Curved|Straight
-        Pair<double, double> Amount5 = Pair.Create(0.000, 0.000); // Position
-        bool Amount6 = false; // [0,1] Use Outline
-        bool Amount7 = false; // [0,1] Use Mat
-        int Amount8 = 12; // [5,20] Mat Size
-        ColorBgra Amount9 = ColorBgra.FromBgr(255, 255, 255); // [White] Mat Color
-        int Amount10 = 255; // [0,255]
-        #endregion
-
-        Surface eraserSurface, stampSurface;
+        private Surface eraserSurface, stampSurface;
 
         private void Render(Surface dst, Surface src, Rectangle rect)
         {
@@ -296,8 +277,14 @@ namespace PostageStampEffect
                     dst[x, y] = stampPixel;
                 }
             }
-
         }
 
+        protected override void OnDispose(bool disposing)
+        {
+            eraserSurface?.Dispose();
+            stampSurface?.Dispose();
+
+            base.OnDispose(disposing);
+        }
     }
 }
