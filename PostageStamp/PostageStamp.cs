@@ -61,7 +61,7 @@ namespace PostageStampEffect
                 new BooleanProperty(PropertyNames.Outline, false),
                 new BooleanProperty(PropertyNames.Mat, false),
                 new Int32Property(PropertyNames.MatSize, 12, 5, 20),
-                new Int32Property(PropertyNames.MatColor, ColorBgra.ToOpaqueInt32(Color.White), int.MinValue, int.MaxValue)
+                new Int32Property(PropertyNames.MatColor, unchecked((int)ColorBgra.White.Bgra), int.MinValue, int.MaxValue)
             };
 
             List<PropertyCollectionRule> propRules = new List<PropertyCollectionRule>
@@ -119,7 +119,7 @@ namespace PostageStampEffect
             Pair<double, double> position = newToken.GetProperty<DoubleVectorProperty>(PropertyNames.Position).Value;
             bool mat = newToken.GetProperty<BooleanProperty>(PropertyNames.Mat).Value;
             int matSize = newToken.GetProperty<Int32Property>(PropertyNames.MatSize).Value;
-            ColorBgra matColor = ColorBgra.FromOpaqueInt32(newToken.GetProperty<Int32Property>(PropertyNames.MatColor).Value);
+            ColorBgra matColor = ColorBgra.FromUInt32(unchecked((uint)newToken.GetProperty<Int32Property>(PropertyNames.MatColor).Value));
             bool outline = newToken.GetProperty<BooleanProperty>(PropertyNames.Outline).Value;
 
             Rectangle selection = EnvironmentParameters.GetSelection(srcArgs.Surface.Bounds).GetBoundsInt();
@@ -281,8 +281,11 @@ namespace PostageStampEffect
 
         protected override void OnDispose(bool disposing)
         {
-            eraserSurface?.Dispose();
-            stampSurface?.Dispose();
+            if (disposing)
+            {
+                eraserSurface?.Dispose();
+                stampSurface?.Dispose();
+            }
 
             base.OnDispose(disposing);
         }
